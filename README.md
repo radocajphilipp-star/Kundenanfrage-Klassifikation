@@ -84,11 +84,11 @@ flowchart TD
 
 <!-- Screenshots hier einfügen: Bild per Drag and Drop in den GitHub-Editor ziehen, GitHub erzeugt den Link automatisch. -->
 
-*Platzhalter: Gesamtansicht des Workflows in n8n*
+<img width="1223" height="348" alt="Workflow_Screenshot_" src="https://github.com/user-attachments/assets/42e16f2d-b1fe-4332-9282-28a411859075" />
 
-*Platzhalter: Upload-Formular*
+<img width="431" height="300" alt="Upload Formular" src="https://github.com/user-attachments/assets/ed42ba9d-2bae-4035-bd3f-b6ba32b411fe" />
 
-*Platzhalter: Ergebnistabelle in Notion*
+<img width="2250" height="547" alt="Ergebnistabelle in Notion" src="https://github.com/user-attachments/assets/3ce417ca-4e84-4b56-953b-793c1e6b751b" />
 
 ## Herausforderungen
 
