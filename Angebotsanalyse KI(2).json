@@ -1,0 +1,626 @@
+{
+  "name": "Angebotsanalyse KI",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Angebote hochladen",
+        "formDescription": "Bitte laden Sie die zu prüfenden Angebote hoch.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Angebote",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf .docx .jpg .jpeg .png",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "45cb2d03-8574-4b4e-a61f-51df87c75d0e",
+      "name": "On form submission",
+      "webhookId": "0de068d9-b718-46bf-8f28-8533960772f6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\nfor (const item of $input.all()) {\n  for (const [key, file] of Object.entries(item.binary ?? {})) {\n\n    output.push({\n      json: {\n        ...item.json,\n        fileName: file.fileName,\n        mimeType: file.mimeType,\n        fileExtension:\n          file.fileExtension ??\n          file.fileName?.split('.').pop()?.toLowerCase()\n      },\n\n      binary: {\n        data: file\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ],
+      "id": "880c002c-5668-4073-a1a1-a87194048129",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "72e94628-780c-408f-b874-bd7d07898a8a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2f15aa6e-319b-4ce6-b2d0-0735e8b6bf0b",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "docx",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "81709644-1a31-4358-9230-cc412a15277d",
+                    "leftValue": "={{ $json.fileExtension }}",
+                    "rightValue": "=^(jpg|jpeg|png)$",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        0
+      ],
+      "id": "5edb6e00-9223-4f02-a650-b3da2fb8d7a4",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        -144
+      ],
+      "id": "42706246-e44a-46e4-8527-9f31bfad6029",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "text": "Lies den vollständigen Text dieses Angebots aus.\n\nÜbernimm Namen, Datumsangaben, Leistungspositionen,\nPreise, Gesamtpreis und Hinweise möglichst exakt.\n\nErfinde keine fehlenden Angaben.",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        224
+      ],
+      "id": "e9976820-791b-436f-bac4-78968c37d790",
+      "name": "Analyze an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UWn7KU0lBOaBw5J9",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-docx-converter.docxToText",
+      "typeVersion": 1,
+      "position": [
+        704,
+        16
+      ],
+      "id": "c66bdbf9-4b35-49f8-b13e-ca795a03d7bf",
+      "name": "DOCX to Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      text: $input.first().json.content.parts[0].text\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        224
+      ],
+      "id": "3dbc20e5-f769-41b2-936f-0d2f68698f68",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "schemaType": "manual",
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"anbieter\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Name des Anbieters bzw. Unternehmens\"\n    },\n    \"angebotsdatum\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Angebotsdatum im Format YYYY-MM-DD\"\n    },\n    \"projekt\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Projektbezeichnung\"\n    },\n    \"leistungen\": {\n      \"type\": \"array\",\n      \"description\": \"Alle angebotenen Leistungen\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"beschreibung\": {\n            \"type\": \"string\",\n            \"description\": \"Originalbeschreibung der Leistung aus dem Angebot\"\n          },\n          \"vergleichsbezeichnung\": {\n            \"type\": \"string\",\n            \"description\": \"Kurze vereinheitlichte Bezeichnung zum Vergleich ähnlicher Leistungen\"\n          },\n          \"preis\": {\n            \"type\": [\"number\", \"null\"],\n            \"description\": \"Preis der einzelnen Leistung als Zahl ohne Währungssymbol\"\n          }\n        },\n        \"required\": [\n          \"beschreibung\",\n          \"vergleichsbezeichnung\",\n          \"preis\"\n        ]\n      }\n    },\n    \"gesamtpreis\": {\n      \"type\": [\"number\", \"null\"],\n      \"description\": \"Gesamtpreis des Angebots als Zahl ohne Währungssymbol\"\n    },\n    \"waehrung\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Währung des Angebots, zum Beispiel EUR\"\n    },\n    \"ausfuehrungszeitraum\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Geplanter Ausführungszeitraum oder Ausführungsfrist\"\n    },\n    \"hinweise\": {\n      \"type\": \"array\",\n      \"description\": \"Relevante Hinweise wie Zusatzkosten, Ausschlüsse, Materialkosten, Zahlungsbedingungen oder Fristen\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"required\": [\n    \"anbieter\",\n    \"angebotsdatum\",\n    \"projekt\",\n    \"leistungen\",\n    \"gesamtpreis\",\n    \"waehrung\",\n    \"ausfuehrungszeitraum\",\n    \"hinweise\"\n  ]\n}",
+        "options": {
+          "systemPromptTemplate": "Du bist ein Angebotsanalyst.\n\nAnalysiere den vorliegenden Angebotstext und extrahiere die Informationen entsprechend dem vorgegebenen Schema.\n\nBringe alle Daten in ein einheitliches Format, damit unterschiedliche Angebote miteinander vergleichbar sind.\n\nRegeln:\n\n- Erkenne den Anbieter.\n- Erkenne das Angebotsdatum.\n- Gib Datumsangaben immer im Format YYYY-MM-DD aus.\n- Erkenne das Projekt.\n- Extrahiere alle angebotenen Leistungen.\n- Übernimm die ursprüngliche Leistungsbeschreibung möglichst wortgetreu in \"beschreibung\".\n- Erzeuge zusätzlich für jede Leistung eine kurze vereinheitlichte \"vergleichsbezeichnung\".\n- Inhaltlich vergleichbare Leistungen sollen möglichst dieselbe Vergleichsbezeichnung erhalten.\n- Übernimm den Preis einer Leistung nur, wenn er eindeutig angegeben ist. Andernfalls verwende null.\n- Gib Preise immer als reine Zahl ohne Währungssymbol und ohne Tausendertrennzeichen aus.\n- Gib die Währung separat an, zum Beispiel EUR.\n- Übernimm den Gesamtpreis, wenn dieser eindeutig angegeben ist.\n- Falls kein Gesamtpreis ausdrücklich angegeben ist, darf er nur berechnet werden, wenn die vorhandenen Einzelpreise eindeutig einen vollständigen Gesamtpreis ergeben. Andernfalls verwende null.\n- Übernimm den Ausführungszeitraum, falls vorhanden.\n- Übernimm relevante Hinweise wie Zusatzkosten, Ausschlüsse, Materialkosten, Lieferzeiten, Zahlungsbedingungen oder Ausführungsfristen.\n- Sind keine Hinweise vorhanden, verwende eine leere Liste.\n- Erfinde keine Informationen.\n- Verwende ausschließlich Informationen aus dem Angebot."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1488,
+        16
+      ],
+      "id": "d00dd23f-642b-40e8-b293-a5b15ec5bcb3",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        208
+      ],
+      "id": "3a64e50d-28a0-4197-be41-b480358af884",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "8g4UzcAkrmCowDWU",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "angebote",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        16
+      ],
+      "id": "54ae5ac3-1261-418c-9663-6828ea1ebbd2",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "56b61397-5ca7-471d-a68c-ba831d404351",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Du bist Angebotsanalyst eines Bauunternehmens.\n\nVergleiche die unten aufgeführten Angebote miteinander und gib eine nachvollziehbare Bewertung ab.\n\nBewerte insbesondere:\n\n- Gesamtpreis\n- angebotene Leistungen\n- fehlende Leistungen oder fehlende Angaben\n- Ausführungszeitraum\n- Zusatzkosten und Ausschlüsse\n- sonstige Hinweise und Risiken\n\nRegeln:\n\n- Ein niedriger Preis allein ist kein ausreichender Grund für eine Empfehlung.\n- Berücksichtige, ob Leistungen zwischen den Angeboten tatsächlich vergleichbar sind.\n- Erfinde keine Informationen.\n- Verwende ausschließlich die Daten aus den vorliegenden Angeboten.\n- Weise ausdrücklich auf fehlende oder unklare Angaben hin.\n- Wenn Angebote aufgrund unterschiedlicher Projekte oder Leistungen nicht sinnvoll vergleichbar sind, weise darauf hin.\n- Empfehle ein Angebot nur, wenn die vorhandenen Informationen dies nachvollziehbar rechtfertigen.\n- Wenn keine eindeutige Empfehlung möglich ist, sage dies ausdrücklich.\n\nBewerte jedes Angebot mit genau einem dieser Status:\nEMPFOHLEN\nNEUTRAL\nABRATEN\n\nAngebote:\n\n{{ JSON.stringify($json.angebote.map(a => a.output), null, 2) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2032,
+        16
+      ],
+      "id": "f69f2fbb-bb15-40b9-a5c2-69b27d9c94c6",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        224
+      ],
+      "id": "9f6ced9c-5325-4a0f-bcf9-57a69a968ddd",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "8g4UzcAkrmCowDWU",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"vergleichbarkeit\": {\n      \"type\": \"string\",\n      \"description\": \"Einschätzung, ob und wie gut die Angebote miteinander vergleichbar sind\"\n    },\n    \"bewertungen\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"anbieter\": {\n            \"type\": \"string\"\n          },\n          \"rang\": {\n            \"type\": [\"number\", \"null\"]\n          },\n          \"status\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"Empfohlen\",\n              \"Neutral\",\n              \"Ablehnen\"\n            ]\n          },\n          \"staerken\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"schwaechen\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"auffaelligkeiten\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"begruendung\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"anbieter\",\n          \"rang\",\n          \"status\",\n          \"staerken\",\n          \"schwaechen\",\n          \"auffaelligkeiten\",\n          \"begruendung\"\n        ]\n      }\n    },\n    \"empfohlenes_angebot\": {\n      \"type\": [\"string\", \"null\"]\n    },\n    \"gesamtfazit\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"vergleichbarkeit\",\n    \"bewertungen\",\n    \"empfohlenes_angebot\",\n    \"gesamtfazit\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2176,
+        224
+      ],
+      "id": "cbb31911-431c-4aa3-9720-ee8153f1f4a4",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const vergleich = $input.first().json.output;\n\n// Die ursprünglich extrahierten Angebote aus dem Aggregate holen\nconst angebote = $('Aggregate').first().json.angebote.map(a => a.output);\n\nreturn angebote.map(angebot => {\n\n  // Passende KI-Bewertung anhand des Anbieternamens suchen\n  const bewertung = (vergleich.bewertungen ?? []).find(\n    b =>\n      b.anbieter?.trim().toLowerCase() ===\n      angebot.anbieter?.trim().toLowerCase()\n  ) ?? {};\n\n  return {\n    json: {\n      anbieter: angebot.anbieter ?? null,\n      angebotsdatum: angebot.angebotsdatum ?? null,\n      projekt: angebot.projekt ?? null,\n\n      leistungen: (angebot.leistungen ?? [])\n        .map(l =>\n          `${l.beschreibung}: ${l.preis ?? 'k.A.'} ${angebot.waehrung ?? ''}`\n        )\n        .join('\\n'),\n\n      gesamtpreis: angebot.gesamtpreis ?? null,\n      waehrung: angebot.waehrung ?? null,\n      ausfuehrungszeitraum: angebot.ausfuehrungszeitraum ?? null,\n\n      hinweise: (angebot.hinweise ?? []).join('\\n'),\n\n      rang: bewertung.rang ?? null,\n      bewertung: bewertung.status ?? null,\n\n      staerken: (bewertung.staerken ?? []).join('\\n'),\n      schwaechen: (bewertung.schwaechen ?? []).join('\\n'),\n      auffaelligkeiten: (bewertung.auffaelligkeiten ?? []).join('\\n'),\n\n      begruendung: bewertung.begruendung ?? null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        16
+      ],
+      "id": "13507965-1dbc-4280-b321-f4c4b82e5d27",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "3f18d90e-b579-8080-86b7-000b3108b4b1",
+          "mode": "list",
+          "cachedResultName": "Angebotszusammenfassung",
+          "cachedResultUrl": "https://app.notion.com/p/3f18d90eb579801d8a93fe37fd95e437"
+        },
+        "title": "Angebotszusammenfassung",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "=Anbieter|title",
+              "title": "={{ $json.anbieter ?? '' }}"
+            },
+            {
+              "key": "Angebotsdatum|date",
+              "includeTime": false,
+              "date": "={{ $json.angebotsdatum }}"
+            },
+            {
+              "key": "Projekt|rich_text",
+              "textContent": "={{ $json.projekt ?? '' }}"
+            },
+            {
+              "key": "Leistungen|rich_text",
+              "textContent": "={{ $json.leistungen ?? '' }}"
+            },
+            {
+              "key": "Gesamtpreis|number",
+              "numberValue": "={{ $json.gesamtpreis }}"
+            },
+            {
+              "key": "Währung|rich_text",
+              "textContent": "={{ $json.waehrung ?? '' }}"
+            },
+            {
+              "key": "Ausführungszeitraum|rich_text",
+              "textContent": "={{ $json.ausfuehrungszeitraum ?? '' }}"
+            },
+            {
+              "key": "Hinweise|rich_text",
+              "textContent": "={{ $json.hinweise ?? '' }}"
+            },
+            {
+              "key": "Rang|number",
+              "numberValue": "={{ $json.rang ?? '' }}"
+            },
+            {
+              "key": "=Bewerung|select",
+              "selectValue": "={{ $json.bewertung }}"
+            },
+            {
+              "key": "Stärken|rich_text",
+              "textContent": "={{ $json.staerken ?? '' }}"
+            },
+            {
+              "key": "Schwächen|rich_text",
+              "textContent": "={{ $json.schwaechen ?? '' }}"
+            },
+            {
+              "key": "Auffälligkeiten|rich_text",
+              "textContent": "={{ $json.auffaelligkeiten ?? '' }}"
+            },
+            {
+              "key": "Begründung|rich_text",
+              "textContent": "={{ $json.begruendung ?? '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        2624,
+        16
+      ],
+      "id": "2c06aa05-cc05-4370-b057-5e933a4ee38a",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "EiNlkF6wkOt5RUYM",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 896,
+        "width": 3008
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "57032346-7a8d-4a6f-8232-49f569087005",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DOCX to Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analyze an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze an image": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "DOCX to Text": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "73a324f1-74c6-4911-b373-d2787621ac10",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ae3e81b08a7819b1f30df6df9b86acb1a941bd5931d8d435be0406478fc0f9a8"
+  },
+  "nodeGroups": [],
+  "id": "kliD0H9Tu4eYa77x",
+  "tags": []
+}
